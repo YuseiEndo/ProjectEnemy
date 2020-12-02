@@ -18,12 +18,9 @@ public class CameraController : MonoBehaviour
     float pitch = 20f;//ピッチ回転
     float yaw = 0f;//ヨー回転
     float distance = 4f;
-    const float rollSpeed = 180f;
+    const float rollSpeed = 10f;
     float cameraHeight = 1.5f;
     const int mouseSensitivity = 2;
-
-    Quaternion hRotation = Quaternion.identity;
-    Quaternion vRotation = Quaternion.identity;
 
     /// <summary>
     /// 一番初めに処理
@@ -55,12 +52,30 @@ public class CameraController : MonoBehaviour
         CameraRot();
     }
 
+    void LateUpdate()
+    {
+        //右クリックを押したらプレイヤーの向いている方向に近距離カメラを向ける
+        if (Input.GetMouseButtonDown(1))
+        {
+            transform.localEulerAngles = playerObj.transform.localEulerAngles;
+        }
+        //右クリックを離したらプレイヤーの向いていた方向に遠距離カメラを向ける
+        else if (Input.GetMouseButtonUp(1))
+        {
+            yaw = playerObj.transform.localEulerAngles.y;
+            Quaternion q = Quaternion.Euler(pitch, yaw, 0);
+            playerPosition = playerObj.transform.position + Vector3.up * cameraHeight;
+            transform.position = playerPosition + q * Vector3.back * distance;
+            transform.LookAt(playerPosition);
+        }
+    }
+
     /// <summary>
     /// カメラの位置
     /// </summary>
     void CameraPos()
     {
-        //射撃時以外のカメラ位置
+        //射撃時以外のカメラ位置（遠距離カメラ）
         if(!(playerController.state == PlayerController.State.shooting))
         {
             Quaternion q = Quaternion.Euler(pitch, yaw, 0);
@@ -68,7 +83,7 @@ public class CameraController : MonoBehaviour
             transform.position = playerPosition + q * Vector3.back * distance;
             transform.LookAt(playerPosition);
         }
-        //射撃時のカメラ位置
+        //射撃時のカメラ位置（近距離カメラ）
         else
         {
             cameraShootingPos = cameraShootingPosObj.transform.position;
@@ -81,7 +96,7 @@ public class CameraController : MonoBehaviour
     /// </summary>
     void CameraRot()
     {
-
+        ////射撃時以外のカメラ回転
         if (!(playerController.state == PlayerController.State.shooting))
         {
             ////左Ctrlキーでカメラ回転
@@ -98,21 +113,18 @@ public class CameraController : MonoBehaviour
 
             //マウス軸取得
             float X_Rotation = Input.GetAxis("Mouse X");
+            //Y軸回転
             yaw += X_Rotation * mouseSensitivity;
-
-            // 水平回転の更新
-            //if (Input.GetMouseButton(0))
-            //    hRotation *= Quaternion.Euler(0, X_Rotation * mouseSensitivity, 0);
-
-            //// カメラの回転(transform.rotation)の更新
-            //// 方法1 : 垂直回転してから水平回転する合成回転とします
-            //transform.rotation = hRotation * vRotation;
         }
+        //射撃時のカメラ回転
         else
         {
             //マウス軸取得
             float X_Rotation = Input.GetAxis("Mouse X");
             float Y_Rotation = Input.GetAxis("Mouse Y");
+
+            //Y軸回転（射撃時以外の分）
+            yaw += X_Rotation * mouseSensitivity;
 
             //X軸回転
             Vector3 localAngle = transform.localEulerAngles;
@@ -129,15 +141,7 @@ public class CameraController : MonoBehaviour
             //playerObj.transform.Rotate(0, X_Rotation * mouseSensitivity, 0);
             Quaternion q1 = playerObj.transform.rotation;
             Quaternion q2 = gameObject.transform.rotation;
-            playerObj.transform.rotation = Quaternion.Lerp(q1, q2, Time.deltaTime * 10);
-        }
-    }
-
-    private void LateUpdate()
-    {
-        if (Input.GetMouseButtonDown(1))
-        {
-            transform.localEulerAngles = playerObj.transform.localEulerAngles;
+            playerObj.transform.rotation = Quaternion.Lerp(q1, q2, Time.deltaTime * rollSpeed);
         }
     }
 }
